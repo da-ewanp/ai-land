@@ -4,6 +4,7 @@ ai_land/testing
 ai_land/slurm
 ai_land/models
 ai_land/wandb
+ai_land/logs
 ai_land/config_old.yaml
 
 # Byte-compiled / optimized / DLL files
@@ -175,3 +176,4 @@ checkpoint/
 *.swp
 ?
 *.grib
+.ruff_cache

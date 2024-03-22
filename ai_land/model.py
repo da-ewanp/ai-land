@@ -19,76 +19,75 @@ torch.cuda.empty_cache()
 
 
 def r2_score_multi(y_pred: np.ndarray, y_true: np.ndarray) -> float:
-    """Calculated the r-squared score between 2 arrays of values
+    """Calculated the r-squared score between 2 arrays of values.
 
-    :param y_pred: predicted array
-    :param y_true: "truth" array
-    :return: r-squared metric
+    :param y_pred: predicted array :param y_true: "truth" array :return: r-squared
+    metric
     """
     return r2_score(y_pred.flatten(), y_true.flatten())
 
 
-class TorchStandardScalerFeatTens:
-    def __init__(self, feat_lst, path="normalise/ec_land_mean_std.zarr", dev="cpu"):
-        self.ds_mustd = xr.open_zarr(path).sel(variable=feat_lst)
+# Define a neural network model with hidden layers and activation functions
+class NonLinearRegression(pl.LightningModule):
+    def __init__(self, input_size_clim, input_size_met, input_size_state, hidden_size, output_size):
+        super().__init__()
+        self.layer_clim = nn.Linear(input_size_clim, hidden_size)
+        self.relu1 = nn.ReLU()
+        self.layer_met = nn.Linear(input_size_met, hidden_size)
+        self.relu2 = nn.ReLU()
+        self.layer_state = nn.Linear(input_size_state, hidden_size)
+        self.relu3 = nn.ReLU()
+
+        self.combine_layer = nn.Linear(hidden_size * 3, hidden_size * 2)
+        self.lrelu1 = nn.LeakyReLU()
+
+        self.fc1 = nn.Linear(hidden_size * 2, hidden_size)
+        self.lrelu2 = nn.LeakyReLU()
+        self.fc2 = nn.Linear(hidden_size, hidden_size)
+        # self.lrelu3 = nn.LeakyReLU()
+        self.lrelu3 = nn.ReLU()
+        self.fc3 = nn.Linear(hidden_size, output_size)
+
+        # Target list
+        self.targ_lst = CONFIG["targets"]
+        path = CONFIG["normalise_delta_path"]
+        self.ds_mustd = xr.open_zarr(path).sel(variable=self.targ_lst)
         self.mean = tensor(
-            self.ds_mustd.var_mean.values, dtype=torch.float32, device=dev
+            self.ds_mustd.var_mean.values,
+            dtype=torch.float32,
         )
-        self.std = tensor(self.ds_mustd.var_std.values, dtype=torch.float32, device=dev)
+        self.std = tensor(
+            self.ds_mustd.var_std.values,
+            dtype=torch.float32,
+        )
 
     def transform(self, x):
-        x_norm = (x - self.mean) / (self.std + 1e-5)
+        x_norm = (x - self.mean.to(self.device)) / (self.std.to(self.device) + 1e-5)
         return x_norm
 
     def inv_transform(self, x_norm):
-        x = (x_norm * (self.std + 1e-5)) + self.mean
+        x = (x_norm * (self.std.to(self.device) + 1e-5)) + self.mean.to(self.device)
         return x
 
+    def forward(self, clim_feats, met_feats, state_feats):
+        out_clim = self.relu1(self.layer_clim(clim_feats))
+        out_met = self.relu2(self.layer_met(met_feats))
+        out_state = self.relu3(self.layer_state(state_feats))
 
-# Define a neural network model with hidden layers and activation functions
-class NonLinearRegression(pl.LightningModule):
-    def __init__(self, input_dim, output_dim, hidden_dim, device):
-        super(NonLinearRegression, self).__init__()
-        self.fc1 = nn.Linear(input_dim, hidden_dim)
-        self.relu1 = nn.ReLU()
-        self.fc2 = nn.Linear(hidden_dim, hidden_dim)
-        self.relu2 = nn.LeakyReLU()
-        self.fc3 = nn.Linear(hidden_dim, hidden_dim)
-        self.relu3 = nn.LeakyReLU()
-        self.fc4 = nn.Linear(hidden_dim, hidden_dim)
-        self.relu4 = nn.LeakyReLU()
-        self.fc5 = nn.Linear(hidden_dim, hidden_dim)
-        self.relu5 = nn.LeakyReLU()
-        self.fc6 = nn.Linear(hidden_dim, hidden_dim)
-        self.relu6 = nn.LeakyReLU()
-        self.fc7 = nn.Linear(hidden_dim, output_dim)
+        combined = torch.cat((out_clim, out_met, out_state), dim=-1)
+        combined_out = self.lrelu1(self.combine_layer(combined))
 
-        # List of climatological time-invariant features
-        self.static_feat_lst = CONFIG["clim_feats"]
-        # List of features that change in time
-        self.dynamic_feat_lst = CONFIG["dynamic_feats"] + CONFIG["targets"]
-        # Target list, make sure these are also the final features in feat_lst
-        self.targ_lst = CONFIG["targets"]
-        self.feat_lst = self.static_feat_lst + self.dynamic_feat_lst
+        out = self.lrelu2(self.fc1(combined_out))
+        out = self.lrelu3(self.fc2(out))
+        out = self.fc3(out)
+        return out
 
-        self.targ_scalar = TorchStandardScalerFeatTens(
-            path="normalise/ec_land_deltax_mean_std.zarr",
-            feat_lst=self.targ_lst,
-            dev=device,
-        )
-        self.targ_idx = np.array(
-            [self.dynamic_feat_lst.index(var) for var in self.targ_lst]
-        )
-
-    def forward(self, x):
-        x = self.relu1(self.fc1(x))
-        x = self.relu2(self.fc2(x))
-        x = self.relu3(self.fc3(x))
-        x = self.relu4(self.fc4(x))
-        x = self.relu5(self.fc5(x))
-        x = self.relu6(self.fc6(x))
-        x = self.fc7(x)
-        return x
+    def predict(self, clim_feats, met_feats, state_feats):
+        preds = state_feats.clone().to(self.device)
+        for x in range(preds.shape[0] - 1):
+            preds_dx = self.forward(clim_feats.to(self.device), met_feats[x].to(self.device), preds[x])
+            preds[x + 1] = preds[x] + preds_dx
+        return preds
 
     def MSE_loss(self, logits, labels):
         # criterion = nn.MSELoss()
@@ -96,49 +95,45 @@ class NonLinearRegression(pl.LightningModule):
         return criterion(logits, labels)
 
     def training_step(self, train_batch, batch_idx):
-        x, y = train_batch
-        logits = self.forward(x)
-        loss = self.MSE_loss(
-            self.targ_scalar.transform(logits), self.targ_scalar.transform(y)
-        )
+        x_clim, x_met, x_state, y = train_batch
+        logits = self.forward(x_clim, x_met, x_state)
+        loss = self.MSE_loss(self.transform(logits), self.transform(y))
         self.log(
             "train_loss",
             loss,
         )  # on_step=False, on_epoch=True)
 
         if CONFIG["roll_out"] > 1:
-            x_rollout = x.clone()
+            x_state_rollout = x_state.clone()
             y_rollout = y.clone()
             for step in range(CONFIG["roll_out"]):
-                # x = [batch_size=8, lookback (7) + rollout (3) = 10, n_feature = 37]
-                x0 = x_rollout[:, step, :, :].clone()  # select input with lookback.
-                y_hat = self.forward(x0)  # prediction at rollout step
+                # x = [batch_size, rollout, x_dim, n_feature]
+                y_hat = self.forward(
+                    x_clim[:, step, :, :], x_met[:, step, :, :], x_state_rollout[:, step, :, :]
+                )  # prediction at rollout step
                 if step < CONFIG["roll_out"] - 1:
-                    x_rollout[:, step + 1, :, self.targ_idx] = (
-                        x_rollout[:, step, :, self.targ_idx].clone() + y_hat
+                    x_state_rollout[:, step + 1, :, :] = (
+                        # x_state_rollout[:, step, :, :].clone() + y_hat
+                        x_state_rollout[:, step, :, :]
+                        + y_hat
                     )  # overwrite x with prediction.
                 y_rollout[:, step, :, :] = y_hat  # overwrite y with prediction.
-            step_loss = self.MSE_loss(
-                self.targ_scalar.transform(y_rollout), self.targ_scalar.transform(y)
-            )
+            step_loss = self.MSE_loss(self.transform(y_rollout), self.transform(y))
             # step_loss = step_loss / ROLLOUT
             self.log(
                 "step_loss",
                 step_loss,
             )  # on_step=False, on_epoch=True)
             loss += step_loss
-
         return loss
 
     def validation_step(self, val_batch, batch_idx):
-        x, y = val_batch
-        logits = self.forward(x)
-        loss = self.MSE_loss(
-            self.targ_scalar.transform(logits), self.targ_scalar.transform(y)
-        )
+        x_clim, x_met, x_state, y = val_batch
+        logits = self.forward(x_clim, x_met, x_state)
+        loss = self.MSE_loss(self.transform(logits), self.transform(y))
         r2 = r2_score_multi(
-            self.targ_scalar.transform(logits).cpu(),
-            self.targ_scalar.transform(y).cpu(),
+            self.transform(logits).cpu(),
+            self.transform(y).cpu(),
         )
         self.log("val_loss", loss, on_step=False, on_epoch=True)
         self.log("val_r**2", r2, on_step=False, on_epoch=True)
