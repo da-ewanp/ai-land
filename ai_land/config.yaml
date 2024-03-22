@@ -1,0 +1,94 @@
+clim_feats:
+  - clim_CLAKE
+  - clim_Ctype
+  - clim_cu
+  - clim_cvh
+  - clim_cvl
+  - clim_geopot
+  - clim_sdfor
+  - clim_sdor
+  - clim_theta_cap
+  - clim_theta_pwp
+  # - clim_veg_covh
+  # - clim_veg_covl
+  - clim_veg_rsminh
+  - clim_veg_rsminl
+  # - clim_veg_z0mh
+  # - clim_veg_z0ml
+  - clim_z0m
+
+dynamic_feats:
+  - met_ctpf
+  - met_lwdown
+  - met_psurf
+  - met_qair
+  - met_rainf
+  - met_swdown
+  - met_snowf
+  - met_tair
+  - met_wind_e
+  - met_wind_n
+  - lai_hv
+  - lai_lv
+
+# targets:
+#   # - sro
+#   # - ssro
+#   - swvl1
+#   - swvl2
+#   - swvl3
+#   # - swvl4
+#   - stl1
+#   - stl2
+#   - stl3
+#   # - stl4
+#   - d2m
+#   - t2m
+#   - skt
+#   - tsn
+#   # - rsn
+#   - sd
+#   - snowc
+targets:
+  # - sro
+  # - ssro
+  - swvl1
+  - swvl2
+  - swvl3
+  # - swvl4
+  - stl1
+  - stl2
+  - stl3
+  # - stl4
+  - d2m
+  - t2m
+  - skt
+  # - tsn
+  # - rsn
+  # - sd
+  - snowc
+
+# file_path: "/perm/daep/ec_land_db_test/ecland_i6aj_2018_2022_6H.zarr"
+# file_path: "/ec/res4/scratch/daep/ec_training_db_out2/ecland_i6aj_2016_2022_veg.zarr"
+file_path: "/ec/res4/scratch/daep/ec_training_db_out_O200/ecland_i8ki_1990_2022_veg.zarr"
+
+start_year: "1990"
+end_year: "2021"
+
+# x_slice_indices: 
+#   - 31294
+#   - 32294
+x_slice_indices: 
+  - 0 
+  - -1
+
+roll_out: 4
+
+batch_size: 12  # 6  # 4  # 32
+
+model_path: "models/pyt_veg_roll_i8ki_simple.pt"
+
+logging:
+  project: "testing"
+  name: "roll_simple"
+
