@@ -58,7 +58,7 @@ if __name__ == "__main__":
         path="/ec/res4/hpcperm/daep/ecland_i6aj_o400_2010_2022_6hr_subset.zarr",
     )
     logging.info("Setting plot callback...")
-    plot_callback = PlotCallback(15, test_ds, device=device)
+    plot_callback = PlotCallback(10, test_ds, device=device, logger=logger)
 
     # print("Opening dataset for plotting...")
     # dataset_plot = EcDataset("2022", "2022", (8239, 8240))
