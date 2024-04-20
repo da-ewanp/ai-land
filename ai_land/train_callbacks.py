@@ -1,12 +1,11 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
-import wandb
 import yaml
 from pytorch_lightning.callbacks import Callback
-from torch import tensor
+from pytorch_lightning.utilities import rank_zero_only
 
-
+# Define the config for the experiment
 with open("config.yaml") as stream:
     try:
         CONFIG = yaml.safe_load(stream)
@@ -15,23 +14,14 @@ with open("config.yaml") as stream:
 
 
 class PlotCallback(Callback):
-    def __init__(self, plot_frequency, dataset):
+    def __init__(self, plot_frequency, dataset, device, logger=None):
         super().__init__()
+        self.device = device
         self.plot_frequency = plot_frequency
         self.test_ds = dataset
-        self.static_feats = self.test_ds.X_static_scaled[0, 0, :]
-        self.feats = self.test_ds.dynamic_feat_scalar.transform(
-            tensor(
-                self.test_ds.ds_ecland[self.test_ds.dynamic_feat_lst].isel(x=0, time=slice(0, -1)).compute().to_array().values.T,
-                dtype=torch.float32,
-            )
-        )
-        self.states = self.test_ds.targ_scalar.transform(
-            tensor(
-                self.test_ds.ds_ecland[self.test_ds.targ_lst].isel(x=0, time=slice(0, -1)).compute().to_array().values.T,
-                dtype=torch.float32,
-            )
-        )
+        self.clim, self.met, self.state, self.state_diag = self.test_ds.load_data()
+        self.times = self.test_ds.times
+        self.logger = logger
 
     def ailand_plot(self, x_vals, preds, targs, label, ax):
         ax.plot(x_vals, targs, label="ec-land")
@@ -44,16 +34,25 @@ class PlotCallback(Callback):
 
     def make_subplot(self, pl_module, epoch):
         with torch.no_grad():
-            preds = pl_module.predict(self.static_feats, self.feats, self.states)
+            preds, _ = pl_module.predict_step(
+                self.clim.to(self.device),
+                self.met.to(self.device),
+                self.state.to(self.device),
+                self.state_diag.to(self.device),
+            )
             # Assuming output is what you need for plotting
-            # Plotting code example
-            fig, axes = plt.subplots(nrows=3, ncols=int(np.ceil(len(self.test_ds.targ_lst) / 3)), figsize=(16, 8))
+            # Plotting code below
+            fig, axes = plt.subplots(
+                nrows=3,
+                ncols=int(np.ceil(len(self.test_ds.targ_lst) / 3)),
+                figsize=(16, 8),
+            )
             for i, ax in enumerate(axes.flatten()):
                 if i < len(self.test_ds.targ_lst):
                     self.ailand_plot(
-                        self.test_ds.ds_ecland.time.values[:-1],
-                        preds[:, i].cpu().numpy(),
-                        self.states[:, i].cpu().numpy(),
+                        self.times[:],
+                        preds[:, 0, i].cpu().numpy(),
+                        self.state[:, 0, i].cpu().numpy(),
                         self.test_ds.targ_lst[i],
                         ax,
                     )
@@ -61,13 +60,21 @@ class PlotCallback(Callback):
                     ax.set_axis_off()
             fig.tight_layout()
             fig.autofmt_xdate()
-            fig.savefig(f"logs/plots/test_epoch{epoch + 1}.png")
-            if CONFIG["logging"]["logger"] == "wandb":
-                wandb.log({"time-series": wandb.Image(fig)})
+            if self.logger is not None:
+                if CONFIG["logging"]["logger"] == "mlflow":
+                    self.logger.experiment.log_figure(
+                        self.logger.run_id, fig, f"timeseries_epoch{epoch + 1}.png"
+                    )
+                else:
+                    fig.savefig(
+                        f"{CONFIG['logging']['location']}/plots/timeseries_epoch{epoch + 1}.png"
+                    )
             plt.close()
 
+    @rank_zero_only
     def on_train_epoch_end(self, trainer, pl_module):
         epoch = trainer.current_epoch
         if (epoch + 1) % self.plot_frequency == 0:
+            pl_module.eval().to(self.device)
             # Generate plot using the model's current weights
             self.make_subplot(pl_module, epoch)

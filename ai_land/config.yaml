@@ -1,11 +1,15 @@
 clim_feats:
-  - clim_CLAKE
-  - clim_Ctype
+  - clim_clake
+  - clim_ldepth
+  - clim_ctype
+  - clim_cell_area
+  - clim_glm
   - clim_cu
   - clim_cvh
   - clim_cvl
-  #- clim_tvh
-  #- clim_tvl
+  # - clim_tvh
+  # - clim_tvl
+  # - clim_sotype
   - clim_geopot
   - clim_sdfor
   - clim_sdor
@@ -13,11 +17,10 @@ clim_feats:
   - clim_theta_pwp
   - clim_veg_covh
   - clim_veg_covl
-  - clim_veg_rsminh
-  - clim_veg_rsminl
   - clim_veg_z0mh
   - clim_veg_z0ml
-  - clim_z0m
+  - clim_veg_rsminh
+  - clim_veg_rsminl
 
 dynamic_feats:
   - met_ctpf
@@ -33,50 +36,57 @@ dynamic_feats:
   - lai_hv
   - lai_lv
 
-targets:
-  # - sro
-  # - ssro
+targets_prog:
   - swvl1
   - swvl2
   - swvl3
-  # - swvl4
   - stl1
   - stl2
   - stl3
-  # - stl4
+  - snowc
+  # - tsn
+
+targets_diag:
   - d2m
   - t2m
   - skt
-  # - e
-  # - tsn
-  # - rsn
-  # - sd_l1
-  - snowc
 
 # file_path: "/perm/daep/ec_land_db_test/ecland_i6aj_2018_2022_6H.zarr"
 # file_path: "/ec/res4/scratch/daep/ec_training_db_out2/ecland_i6aj_2016_2022_veg.zarr"
-file_path: "/ec/res4/scratch/daep/ec_training_db_out_O200/ecland_i8ki_1990_2022_veg.zarr"
-normalise_path: "normalise/ec_land_mean_std_O200.zarr"
-normalise_delta_path: "normalise/ec_land_deltax_mean_std_O200.zarr"
+# file_path: "/ec/res4/hpcperm/daep/ecland_i6aj_o400_2010_2022_6hr.zarr"
+# file_path: "/ec/res4/hpcperm/daep/ecland_i8ki_o200_2010_2022_1hr.zarr"
+file_path: "/ec/res4/hpcperm/daep/ecland_i6aj_o400_2010_2022_6hr_subset.zarr"
 
-start_year: "2020"
-end_year: "2021"
+start_year: 2010
+end_year: 2020
+
+validation_start: 2021
+validation_end: 2021
 
 # x_slice_indices:
 #   - 31294
 #   - 32294
 x_slice_indices:
   - 0
-  - -1
+  - None
 
-roll_out: 4
+roll_out: 8  # 4  # 1
 
-batch_size: 12  # 6  # 4  # 32
+batch_size: 4  # 4  # 4  # 8  # 32
+num_workers: 16  # 8
+hidden_dim: 64  # 128  #90  # 96  # 120
+max_epochs: 80
+strategy: ddp
+devices: 2
 
-model_path: "models/pyt_veg_roll_i8ki_met.pt"
+model_path: "models/pyt_mlf_6hr.pt"
+# model_path: "models/pyt_mlf_1hr.pt"
 
 logging:
-  logger: "csv"
-  # logger: "wandb"
-  project: "testing"
-  name: "roll_4"
+  # logger: "csv"
+  # location: "logs"
+  logger: "mlflow"
+  uri: "file:./mlruns"
+  project: "lannd_emulator_6hr"
+  # project: "lannd_emulator_1hr"
+  name: "roll_8"

@@ -171,6 +171,13 @@ outputs/
 
 ?.*
 plots/
+logs/
+ml-runs/
+mlruns/
+models/
+slurm/
+ai_land_old/
+ai_land_torch/
 checkpoint/
 *.ckpt
 *.swp
