@@ -9,11 +9,11 @@ Under `notebooks/` we include some examples of running the model and comparing t
 ## Quick Start
 
 The necessary Python dependencies are included in the `setup.py` file. The project can be installed under a conda or virtual environment. After activating your new environment and navigating to the `ai-land` directory simply run:
-```
+```bash
 pip install -e .
 ```
 If you are contributing to this repo we also are using pre-commit hooks to keep the code readable. Please install these using:
-```
+```bash
 pre-commit install
 ```
 Then the code will automatically be reformatted when you commit any changes via Git. Please also ensure you raise a PR for any changes going to a main branch and get these peer-reviewed. Thank you! :pray:

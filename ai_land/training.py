@@ -1,5 +1,4 @@
 import logging
-import signal
 
 import pytorch_lightning as pl
 import torch
@@ -8,8 +7,12 @@ from data_module import EcDataset, NonLinRegDataModule
 from model import NonLinearRegression
 from pytorch_lightning.callbacks import ModelCheckpoint, RichProgressBar
 from pytorch_lightning.loggers import CSVLogger, MLFlowLogger
-from pytorch_lightning.plugins.environments import SLURMEnvironment
+
+# from pytorch_lightning.plugins.environments import SLURMEnvironment
 from train_callbacks import PlotCallback
+
+# import signal
+
 
 # from pytorch_lightning.utilities.distributed import rank_zero_only
 # from torch.distributed import init_process_group, destroy_process_group
@@ -56,6 +59,8 @@ if __name__ == "__main__":
         end_yr=2022,
         x_idxs=(500, 500 + 1),
         path="/ec/res4/hpcperm/daep/ecland_i6aj_o400_2010_2022_6hr_subset.zarr",
+        # x_idxs=(9973, 9973 + 1),
+        # path="/ec/res4/hpcperm/daep/ecland_i8ki_o200_2010_2022_1hr.zarr",
     )
     logging.info("Setting plot callback...")
     plot_callback = PlotCallback(10, test_ds, device=device, logger=logger)
@@ -87,9 +92,9 @@ if __name__ == "__main__":
     logging.info("Setting Trainer...")
     trainer = pl.Trainer(
         logger=logger,
-        callbacks=[checkpoint_callback, RichProgressBar()],
+        callbacks=[checkpoint_callback, RichProgressBar(), plot_callback],
         max_epochs=CONFIG["max_epochs"],
-        plugins=[SLURMEnvironment(requeue_signal=signal.SIGUSR1)],
+        # plugins=[SLURMEnvironment(requeue_signal=signal.SIGUSR1)],
         strategy=CONFIG["strategy"],
         devices=CONFIG["devices"],
         # barebones=True,

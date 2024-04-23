@@ -51,8 +51,6 @@ targets_diag:
   - t2m
   - skt
 
-# file_path: "/perm/daep/ec_land_db_test/ecland_i6aj_2018_2022_6H.zarr"
-# file_path: "/ec/res4/scratch/daep/ec_training_db_out2/ecland_i6aj_2016_2022_veg.zarr"
 file_path: "/ec/res4/hpcperm/daep/ecland_i6aj_o400_2010_2022_6hr.zarr"
 # file_path: "/ec/res4/hpcperm/daep/ecland_i8ki_o200_2010_2022_1hr.zarr"
 # file_path: "/ec/res4/hpcperm/daep/ecland_i6aj_o400_2010_2022_6hr_subset.zarr"
@@ -70,7 +68,7 @@ x_slice_indices:
   - 0
   - None
 
-roll_out: 8  # 4  # 1
+roll_out: 6  # 4  # 1
 
 batch_size: 4  # 4  # 4  # 8  # 32
 num_workers: 16  # 8

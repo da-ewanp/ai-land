@@ -71,23 +71,23 @@ class NonLinearRegression(pl.LightningModule):
 
         self.diag_output_size = diag_output_size
         self.layer_clim = nn.Linear(input_size_clim, hidden_size)
-        self.relu1 = nn.Tanh()  # nn.ReLU()
+        self.relu1 = nn.ReLU()  # nn.Tanh()
         self.layer_met = nn.Linear(input_size_met, hidden_size)
-        self.relu2 = nn.Tanh()  # nn.ReLU()
+        self.relu2 = nn.ReLU()  # nn.Tanh()
         self.layer_state = nn.Linear(input_size_state, hidden_size)
-        self.relu3 = nn.Tanh()  # nn.ReLU()
+        self.relu3 = nn.ReLU()  # nn.Tanh()
 
         self.combine_layer = nn.Linear(hidden_size * 3, hidden_size)
-        self.lrelu1 = nn.Tanh()  # nn.LeakyReLU()
+        self.lrelu1 = nn.LeakyReLU()  # nn.Tanh()
 
         self.fc1 = nn.Linear(hidden_size, hidden_size)
-        self.lrelu2 = nn.Tanh()  # nn.LeakyReLU()
+        self.lrelu2 = nn.LeakyReLU()  # nn.Tanh()
         self.fc2 = nn.Linear(hidden_size, hidden_size)
-        self.lrelu3 = nn.Tanh()  # nn.LeakyReLU()
+        self.lrelu3 = nn.LeakyReLU()  # nn.Tanh()
         self.fc3 = nn.Linear(hidden_size, output_size)
 
         self.fc4 = nn.Linear(hidden_size, hidden_size)
-        self.lrelu5 = nn.Tanh()  # nn.LeakyReLU()
+        self.lrelu5 = nn.LeakyReLU()  # nn.Tanh()
         self.fc5 = nn.Linear(hidden_size, diag_output_size)
 
     def forward(self, clim_feats, met_feats, state_feats):
