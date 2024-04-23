@@ -1,0 +1,37 @@
+from setuptools import find_packages
+from setuptools import setup
+
+setup(
+    name="ai_land",
+    version="0.0.1",
+    author="Ewan Pinnington",
+    author_email="ewan.pinnington@ecmwf.int",
+    description="Experimental land surface model emulator",
+    packages=find_packages(),
+    install_requires=[
+        "pyyaml",
+        "black",
+        "isort",
+        "flake8",
+        "pytest",
+        "cartopy",
+        "xarray[complete]>=2023.1.0",
+        "dask-jobqueue>=0.8.1",
+        "dask-mpi>=2022.4.0",
+        "distributed>=2023.1.1",
+        "torch>=2.2",
+        # "torch==2.2+cu118 --index-url https://download.pytorch.org/whl/cu118",
+        "scikit-learn",
+        "pytorch-lightning>=2.1.0",
+        "matplotlib>=3.7.1",
+        "torchinfo>=1.8.0",
+        "zarr>=2.14.2",
+        "mlflow",
+        "pynvml",
+        "mlflow-export-import>=1.2.0",
+        "pre-commit>=3.3.3",
+        "torch-cluster",
+        "ecml-tools[data,provenance]>=0.2.0",
+        "earthkit",
+    ],
+)
