@@ -1,5 +1,6 @@
 from typing import Tuple
 
+import cftime
 import numpy as np
 import pandas as pd
 import pytorch_lightning as pl
@@ -31,17 +32,21 @@ class EcDataset(Dataset):
     ):
         self.ds_ecland = zarr.open(path)
         # Create time index to select appropriate data range
-        hours_series = pd.Series(self.ds_ecland["time"])
-        start_date = pd.to_datetime(dict(self.ds_ecland["time"].attrs)["units"][-10:])
-        date_times = start_date + pd.to_timedelta(hours_series, unit="h")
-        self.start_index = min(np.argwhere(date_times.dt.year == int(start_yr)))[0]
-        self.end_index = max(np.argwhere(date_times.dt.year == int(end_yr)))[0]
+        date_times = pd.to_datetime(
+            cftime.num2pydate(
+                self.ds_ecland["time"], self.ds_ecland["time"].attrs["units"]
+            )
+        )
+        self.start_index = min(np.argwhere(date_times.year == int(start_yr)))[0]
+        self.end_index = max(np.argwhere(date_times.year == int(end_yr)))[0]
         self.times = np.array(date_times[self.start_index : self.end_index])
         self.len_dataset = self.end_index - self.start_index
 
         # Select points in space
         self.x_idxs = (0, None) if "None" in x_idxs else x_idxs
         self.x_size = len(self.ds_ecland["x"][slice(*self.x_idxs)])
+        self.lats = self.ds_ecland["lat"][slice(*self.x_idxs)]
+        self.lons = self.ds_ecland["lon"][slice(*self.x_idxs)]
 
         # List of climatological time-invariant features
         self.static_feat_lst = CONFIG["clim_feats"]
@@ -189,6 +194,8 @@ class NonLinRegDataModule(pl.LightningDataModule):
             batch_size=CONFIG["batch_size"],
             shuffle=True,
             num_workers=CONFIG["num_workers"],
+            persistent_workers=True,
+            pin_memory=True,
         )
 
     def val_dataloader(self):
@@ -197,4 +204,6 @@ class NonLinRegDataModule(pl.LightningDataModule):
             batch_size=CONFIG["batch_size"],
             shuffle=False,
             num_workers=CONFIG["num_workers"],
+            persistent_workers=True,
+            pin_memory=True,
         )
