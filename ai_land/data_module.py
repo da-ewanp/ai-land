@@ -1,3 +1,4 @@
+import os
 from typing import Tuple
 
 import cftime
@@ -11,7 +12,8 @@ from torch import tensor
 from torch.utils.data import DataLoader, Dataset
 
 # Open up experiment config
-with open("config.yaml") as stream:
+PATH_NAME = os.path.dirname(os.path.abspath(__file__))
+with open(f"{PATH_NAME}/config.yaml") as stream:
     try:
         CONFIG = yaml.safe_load(stream)
     except yaml.YAMLError as exc:
@@ -99,6 +101,7 @@ class EcDataset(Dataset):
         normalised data
         """
         x_norm = (x - mean) / (std + 1e-5)
+        # x_norm = (x - mean) / std
         return x_norm
 
     def inv_transform(
@@ -110,6 +113,7 @@ class EcDataset(Dataset):
         :return: unnormalised data
         """
         x = (x_norm * (std + 1e-5)) + mean
+        # x = (x_norm * (std)) + mean
         return x
 
     def load_data(self) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
