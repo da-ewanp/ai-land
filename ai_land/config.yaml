@@ -3,13 +3,16 @@ clim_feats:
   - clim_ldepth
   - clim_ctype
   - clim_cell_area
+  # - clim_landsea
   - clim_glm
   - clim_cu
   - clim_cvh
   - clim_cvl
+###
   # - clim_tvh
   # - clim_tvl
   # - clim_sotype
+###
   - clim_geopot
   - clim_sdfor
   - clim_sdor
@@ -50,12 +53,20 @@ targets_diag:
   - d2m
   - t2m
   - skt
+  # - sshf
+  # - slhf
 
-file_path: "/ec/res4/hpcperm/daep/ecland_i6aj_o400_2010_2022_6hr.zarr"
+# file_path: "/ec/res4/hpcperm/daep/ecland_i6aj_o400_2010_2022_6hr.zarr"
 # file_path: "/ec/res4/hpcperm/daep/ecland_i8ki_o200_2010_2022_1hr.zarr"
 # file_path: "/ec/res4/hpcperm/daep/ecland_i6aj_o400_2010_2022_6hr_subset.zarr"
+# file_path: "/ec/res4/scratch/daep/ec_training_db_out_O400/ecland_i6aj_2010_2022_6H.zarr"
+# file_path: "/ec/res4/scratch/daep/ec_training_db_out_O200/ecland_i8ki_2010_2022_6H.zarr"
+# file_path: "/ec/res4/scratch/daep/ec_training_db_out_O200/ecland_i8ki_2010_2022_6H.zarr"
+# file_path: "/ec/res4/hpcperm/daep/ec_land_training_db/ecland_i8ki_2010_2022_6h.zarr"
+# file_path: "/ec/res4/scratch/daep/ec_training_db_out_O400/ecland_i6aj_2010_2022_6h.zarr"
+file_path: "/ec/res4/hpcperm/daep/ec_land_training_db/ecland_i6aj_o400_2010_2022_6h.zarr"
 
-start_year: 2010
+start_year: 2015
 end_year: 2020
 
 validation_start: 2021
@@ -68,23 +79,28 @@ x_slice_indices:
   - 0
   - None
 
-roll_out: 6  # 4  # 1
+roll_out: 6  # 8  # 6  # 1
 
-batch_size: 4  # 4  # 4  # 8  # 32
+batch_size: 4  # 2  # 2  # 4  # 8  # 32
 num_workers: 16  # 8
-hidden_dim: 64  # 128  #90  # 96  # 120
-max_epochs: 80
+hidden_dim: 172  # 64  # 128  # 172  # 128  # 92  # 64  # 164  # 128  #90  # 96  # 120
+max_epochs: 250
 strategy: ddp
+# strategy: ddp_find_unused_parameters_true
 devices: 2
 
-model_path: "models/pyt_mlf_6hr.pt"
+# model_path: "models/pyt_mlf_6hr_172_sim_newdb_i8ki.pt"
+model_path: "models/pyt_mlf_6hr_128_newdb_i6aj2.pt"
 # model_path: "models/pyt_mlf_1hr.pt"
 
 logging:
   # logger: "csv"
-  # location: "logs"
+  # location: "logs2"
   logger: "mlflow"
-  uri: "file:./mlruns"
-  project: "lannd_emulator_6hr"
+  uri: "file:./mlruns2"
+  # project: "lannd_emulator_6hr_newdb_simod_i8ki"
+  # project: "lannd_emulator_6hr_sim_newdb_i6aj_sea"
+  project: "lannd_emulator_6hr_newdb_i6aj_sea"
   # project: "lannd_emulator_1hr"
-  name: "roll_8"
+  name: "roll_8_sl1_ls"
+  plot_freq: 10  # 5  # 10
