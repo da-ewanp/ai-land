@@ -30,7 +30,7 @@ setup(
         "pynvml",
         "mlflow-export-import>=1.2.0",
         "pre-commit>=3.3.3",
-        "torch-cluster",
+        # "torch-cluster",
         "ecml-tools[data,provenance]>=0.2.0",
         "earthkit",
     ],
