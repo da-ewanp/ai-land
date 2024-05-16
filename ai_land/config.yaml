@@ -3,7 +3,7 @@ clim_feats:
   - clim_ldepth
   - clim_ctype
   - clim_cell_area
-  # - clim_landsea
+  - clim_landsea
   - clim_glm
   - clim_cu
   - clim_cvh
@@ -102,5 +102,5 @@ logging:
   # project: "lannd_emulator_6hr_sim_newdb_i6aj_sea"
   project: "lannd_emulator_6hr_newdb_i6aj_sea"
   # project: "lannd_emulator_1hr"
-  name: "roll_8_sl1_ls"
+  name: "roll_8_mse_ls"
   plot_freq: 10  # 5  # 10
