@@ -87,7 +87,7 @@ class NonLinearRegression(pl.LightningModule):
         self.diag_output_size = diag_output_size
         input_dim = input_size_clim + input_size_met + input_size_state
 
-        num_blocks = 4  # 5 # 6
+        num_blocks = 2  # 4  # 5 # 6
         hidden_dim = hidden_size
         output_dim = output_size
 
@@ -97,12 +97,14 @@ class NonLinearRegression(pl.LightningModule):
         self.residual_blocks = nn.ModuleList([
             nn.Sequential(
                 nn.Linear(hidden_dim, hidden_dim),
-                # nn.ReLU(),
-                nn.LeakyReLU(),
+                nn.ReLU(),
+                # nn.LeakyReLU(),
                 # nn.GELU(),
                 nn.LayerNorm(hidden_dim),
-                #nn.Linear(hidden_dim, hidden_dim),
-                #nn.Dropout(0.1)
+                
+                nn.Linear(hidden_dim, hidden_dim),
+                nn.Dropout(0.1)
+            
             ) for _ in range(num_blocks)
         ])
         
