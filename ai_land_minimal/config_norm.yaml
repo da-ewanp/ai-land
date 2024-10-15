@@ -2,16 +2,16 @@ clim_feats:
   - clim_clake
   - clim_ldepth
   - clim_ctype
-  - clim_cell_area
+  #- clim_cell_area
   - clim_landsea
   - clim_glm
   - clim_cu
   - clim_cvh
   - clim_cvl
 ###
-  - clim_tvh
-  - clim_tvl
-  - clim_sotype
+  # - clim_tvh
+  # - clim_tvl
+  # - clim_sotype
 ###
   - clim_geopot
   - clim_sdfor
@@ -46,9 +46,38 @@ targets_prog:
   - stl1
   - stl2
   - stl3
-  - snowc 
+  - snowc_recalc
   - sd
-  # - tsn
+  - tsn
+
+normalize:
+  default:
+    - mean-std
+  max:
+    - snowc_recalc
+    # - sd
+    - tsn
+    - lai_hv
+    - lai_lv
+  none:
+    - clim_clake
+    - clim_ldepth
+    - clim_ctype
+    # - clim_cell_area
+    - clim_landsea
+    - clim_glm
+    - clim_cu
+    - clim_cvh
+    - clim_cvl
+    - clim_theta_cap
+    - clim_theta_pwp
+    - clim_veg_covh
+    - clim_veg_covl
+    - swvl1
+    - swvl2
+    - swvl3
+  stdev:
+    - sd
 
 targets_diag:
   - d2m
@@ -60,15 +89,9 @@ targets_diag:
 
 # file_path: "/ec/res4/hpcperm/daep/ecland_i6aj_o400_2010_2022_6hr.zarr"
 # file_path: "/ec/res4/hpcperm/daep/ecland_i8ki_o200_2010_2022_1hr.zarr"
-# file_path: "/ec/res4/hpcperm/daep/ecland_i6aj_o400_2010_2022_6hr_subset.zarr"
-# file_path: "/ec/res4/scratch/daep/ec_training_db_out_O400/ecland_i6aj_2010_2022_6H.zarr"
-# file_path: "/ec/res4/scratch/daep/ec_training_db_out_O200/ecland_i8ki_2010_2022_6H.zarr"
-# file_path: "/ec/res4/scratch/daep/ec_training_db_out_O200/ecland_i8ki_2010_2022_6H.zarr"
-# file_path: "/ec/res4/hpcperm/daep/ec_land_training_db/ecland_i8ki_o200_2010_2022_6h.zarr"
-# file_path: "/ec/res4/scratch/daep/ec_training_db_out_O400/ecland_i6aj_2010_2022_6h.zarr"
-# file_path: "/ec/res4/hpcperm/daep/ec_land_training_db/ecland_i6aj_o400_2010_2022_6h.zarr"
-# file_path: "/ec/scratch/daep/ecland_i6aj_chunked.zarr"
-file_path: "/perm/daep/ecland_i6aj_2017_2022_1h.zarr"
+file_path: /perm/daep/ecland_i6aj_2017_2022_1h_euro.zarr
+# file_path: "/hpcperm/daep/ecland_i6aj_2017_2022_1h_subset.zarr"
+# file_path: "/scratch/daep/ecland_i6aj_2017_2022_1h.zarr"
 
 start_year: 2017
 end_year: 2021
@@ -83,28 +106,32 @@ x_slice_indices:
   - 0
   - None
 
-roll_out: 8  # 8  # 6  # 1
+# roll_out: 8  # 8  # 6  # 1
 
-batch_size: 1000  # 2  # 2  # 4  # 8  # 32
-num_workers: 16
-hidden_dim: 192  # 172  # 64  # 128  # 172  # 128  # 92  # 64  # 164  # 128  #90  # 96  # 120
-max_epochs: 250
+# batch_size: 2  # 2  # 2  # 4  # 8  # 32
+roll_out: 8  # 12  # 24  # 8  # 6  # 1
+chunk_size: "None"  # 10000
+
+batch_size: 12  # 2  # 2  # 4  # 8  # 32
+num_workers: 12  # 16
+hidden_dim: 256  # 128 # 172  # 64  # 128  # 172  # 128  # 92  # 64  # 164  # 128  #90  # 96  # 120
+max_epochs: 200
 strategy: ddp
 # strategy: ddp_find_unused_parameters_true
-devices: 1  # 2
+devices: 1  # 4  # 4  # 4  # 2
 
 # model_path: "models/pyt_mlf_6hr_172_sim_newdb_i8ki.pt"
-model_path: "models/pyt_mlf_6hr_128_newdb_i6aj2.pt"
+model_path: "models/pyt_mlf_1hr_128_newdb_i6aj.pt"
 # model_path: "models/pyt_mlf_1hr.pt"
 
 logging:
-  logger: "csv"
-  location: "logs2"
- # logger: "mlflow"
- # uri: "file:./mlruns2"
+  #logger: "csv"
+  #location: "logs2"
+  logger: "mlflow"
+  uri: "file:./mlruns"
   # project: "lannd_emulator_6hr_newdb_simod_i8ki"
   # project: "lannd_emulator_6hr_sim_newdb_i6aj_sea"
   project: "lannd_emulator_6hr_newdb_i6aj_sea"
   # project: "lannd_emulator_1hr"
   name: "roll_8_sl1_idx"
-  plot_freq: 10  # 5  # 10
+  plot_freq: 1  # 10  # 5  # 10

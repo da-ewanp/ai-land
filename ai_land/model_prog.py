@@ -72,7 +72,6 @@ class NonLinearRegression(pl.LightningModule):
         input_size_state,
         hidden_size,
         output_size,
-        diag_output_size,
         mu_norm=0,
         std_norm=1,
         dataset=None,
@@ -84,111 +83,46 @@ class NonLinearRegression(pl.LightningModule):
         self.ds = dataset
 
         # Define layers
-        self.diag_output_size = diag_output_size
         input_dim = input_size_clim + input_size_met + input_size_state
 
-        #     self.fc1 = nn.Linear(input_dim, hidden_size)
-        #     self.relu1 = nn.ReLU()
-        #     self.fc2 = nn.Linear(hidden_size, hidden_size)
-        #     self.relu2 = nn.LeakyReLU()
-        #     self.fc3 = nn.Linear(hidden_size, hidden_size)
-        #     self.relu3 = nn.LeakyReLU()
-        #     self.fc4 = nn.Linear(hidden_size, hidden_size)
-        #     self.relu4 = nn.LeakyReLU()
-        #     self.dropout = nn.Dropout(0.2)
-        #     self.fc5 = nn.Linear(hidden_size, hidden_size)
-        #     self.relu5 = nn.LeakyReLU()
-        #     self.fc6 = nn.Linear(hidden_size, hidden_size)
-        #     self.relu6 = nn.LeakyReLU()
-        #     self.fc7 = nn.Linear(hidden_size, output_size)
-        #     self.fc8 = nn.Linear(hidden_size, diag_output_size)
-
-        # def forward(self, clim_feats, met_feats, state_feats):
-        #     combined = torch.cat((clim_feats, met_feats, state_feats), dim=-1)
-        #     x = self.relu1(self.fc1(combined))
-        #     x = self.relu2(self.fc2(x))
-        #     x = self.relu3(self.fc3(x))
-        #     x = self.dropout(self.relu4(self.fc4(x)))
-        #     x = self.relu5(self.fc5(x))
-        #     x = self.relu6(self.fc6(x))
-        #     x_prog = self.fc7(x)
-        #     x_diag = self.fc8(x)
-        #     return x_prog, x_diag
-
-        #     self.fc1 = nn.Linear(input_dim, hidden_size)
-        #     self.relu1 = nn.ReLU()
-        #     self.fc2 = nn.Linear(hidden_size, hidden_size)
-        #     self.relu2 = nn.LeakyReLU()
-        #     self.fc3 = nn.Linear(hidden_size, hidden_size)
-        #     self.dropout = nn.Dropout(0.15)
-        #     self.relu3 = nn.LeakyReLU()
-        #     self.fc4 = nn.Linear(hidden_size, output_size)
-        #     self.fc5 = nn.Linear(hidden_size, diag_output_size)
-
-        # def forward(self, clim_feats, met_feats, state_feats):
-        #     combined = torch.cat((clim_feats, met_feats, state_feats), dim=-1)
-        #     x = self.relu1(self.fc1(combined))
-        #     x = self.dropout(self.relu2(self.fc2(x)))
-        #     x = self.relu3(self.fc3(x))
-        #     x_prog = self.fc4(x)
-        #     x_diag = self.fc5(x)
-        #     return x_prog, x_diag
-
         self.fc1 = nn.Linear(input_dim, hidden_size)
-        self.layer_norm1 = nn.BatchNorm1d(hidden_size)
         self.relu1 = nn.ReLU()
         self.fc2 = nn.Linear(hidden_size, hidden_size)
-        self.relu2 = nn.ReLU()
+        self.relu2 = nn.LeakyReLU()
         self.fc3 = nn.Linear(hidden_size, hidden_size)
-        self.dropout = nn.Dropout(0.15)
-        self.relu3 = nn.ReLU()
-        self.fc4 = nn.Linear(hidden_size, hidden_size)
-        self.relu4 = nn.ReLU()
-        self.layer_norm2 = nn.BatchNorm1d(hidden_size)
-        self.fc5 = nn.Linear(hidden_size, output_size)
-        self.fc6 = nn.Linear(hidden_size, diag_output_size)
+        self.dropout = nn.Dropout(0.2)
+        self.relu3 = nn.LeakyReLU()
+        self.fc4 = nn.Linear(hidden_size, output_size)
 
     def forward(self, clim_feats, met_feats, state_feats):
-        x = torch.cat((clim_feats, met_feats, state_feats), dim=-1)
-        original_shape = x.size()
-        x = x.view(-1, original_shape[-1])  # Flatten all dimensions except the last two
-        x = self.relu1(self.layer_norm1(self.fc1(x)))
+        combined = torch.cat((clim_feats, met_feats, state_feats), dim=-1)
+        x = self.relu1(self.fc1(combined))
         x = self.dropout(self.relu2(self.fc2(x)))
         x = self.relu3(self.fc3(x))
-        x = self.relu4(self.layer_norm2(self.fc4(x)))
-        x_prog = self.fc5(x)
-        x_prog = x_prog.view(*original_shape[:-1], x_prog.shape[-1])
-        x_diag = self.fc6(x)
-        x_diag = x_diag.view(*original_shape[:-1], x_diag.shape[-1])
-        return x_prog, x_diag
+        x = self.fc4(x)
+        return x
 
     def transform(self, x, mean, std):
         x_norm = (x - mean) / (std + 1e-5)
         # x_norm = (x - mean) / (std)
         return x_norm
 
-    def predict_step(
-        self, clim_feats, met_feats, states, diagnostics
-    ) -> Tuple[tensor, tensor]:
+    def predict_step(self, clim_feats, met_feats, states) -> Tuple[tensor, tensor]:
         """Given arrays of features produces a prediction for all timesteps.
 
         :return: (prognost_targets, diagnostic_targets)
         """
         preds = states.clone().to(self.device)
-        preds_diag = diagnostics.clone().to(self.device)
         # preds = torch.zeros_like(states).to(self.device)
         # preds_diag = torch.zeros_like(diagnostics).to(self.device)
         # preds[0] = states[0]
         len_run = preds.shape[0]
 
         for x in range(len_run):
-            preds_dx, preds_diag_x = self.forward(
-                clim_feats, met_feats[[x]], preds[[x]]
-            )
+            preds_dx = self.forward(clim_feats, met_feats[[x]], preds[[x]])
             if x < (len_run - 1):
                 preds[x + 1] = preds[x] + preds_dx
-            preds_diag[x] = preds_diag_x
-        return preds, preds_diag
+        return preds
 
     def MSE_loss(self, logits, labels):
         # criterion = nn.MSELoss()
@@ -196,36 +130,29 @@ class NonLinearRegression(pl.LightningModule):
         return criterion(logits, labels)
 
     def training_step(self, train_batch, batch_idx):
-        x_clim, x_met, x_state, y, y_diag = train_batch
-        logits, logits_diag = self.forward(x_clim, x_met, x_state)
+        x_clim, x_met, x_state, y, _ = train_batch
+        logits = self.forward(x_clim, x_met, x_state)
         mean = self.mu_norm.to(self.device)
         std = self.std_norm.to(self.device)
         loss = self.MSE_loss(
             self.transform(logits, mean, std), self.transform(y, mean, std)
         )
-        loss_diag = self.MSE_loss(logits_diag, y_diag)
         self.log(
             "train_loss",
             loss,
-        )
-        self.log(
-            "train_diag_loss",
-            loss_diag,
         )
 
         if CONFIG["roll_out"] > 1:
             x_state_rollout = x_state.clone()
             y_rollout = y.clone()
-            y_rollout_diag = y_diag.clone()
             for step in range(CONFIG["roll_out"]):
                 # x = [batch_size=8, lookback (7) + rollout (3) = 10, n_feature = 37]
                 x0 = x_state_rollout[
                     :, step, :, :
                 ].clone()  # select input with lookback.
-                y_hat, y_hat_diag = self.forward(
+                y_hat = self.forward(
                     x_clim[:, step, :, :], x_met[:, step, :, :], x0
                 )  # prediction at rollout step
-                y_rollout_diag[:, step, :, :] = y_hat_diag
                 if step < CONFIG["roll_out"] - 1:
                     x_state_rollout[:, step + 1, :, :] = (
                         x_state_rollout[:, step, :, :].clone() + y_hat
@@ -235,59 +162,40 @@ class NonLinearRegression(pl.LightningModule):
                 self.transform(y_rollout, mean, std), self.transform(y, mean, std)
             )
             step_loss_abs = self.MSE_loss(x_state_rollout, x_state)
-            step_loss_diag = self.MSE_loss(y_rollout_diag, y_diag)
-            self.log("step_loss_abs", step_loss_abs)
             # step_loss = step_loss / ROLLOUT
             self.log(
                 "step_loss",
                 step_loss,
             )
-            self.log(
-                "step_loss_diag",
-                step_loss_diag,
-            )
+            self.log("step_loss_abs", step_loss_abs)
             loss += step_loss
-            loss_diag += step_loss_diag
+            loss += step_loss_abs
 
-        return loss + loss_diag + step_loss_abs
+        return loss
 
     def validation_step(self, val_batch, batch_idx):
-        x_clim, x_met, x_state, y, y_diag = val_batch
+        x_clim, x_met, x_state, y, _ = val_batch
         mean = self.mu_norm.to(self.device)
         std = self.std_norm.to(self.device)
-        logits, logits_diag = self.forward(x_clim, x_met, x_state)
+        logits = self.forward(x_clim, x_met, x_state)
         loss = self.MSE_loss(
             self.transform(logits, mean, std), self.transform(y, mean, std)
         )
-        loss_diag = self.MSE_loss(logits_diag, y_diag)
         r2 = r2_score_multi(
             self.transform(logits, mean, std).cpu(),
             self.transform(y, mean, std).cpu(),
         )
-        r2_diag = r2_score_multi(
-            logits_diag.cpu(),
-            y_diag.cpu(),
-        )
-        self.log("val_loss", loss, on_step=False, on_epoch=True, sync_dist=True)
-        self.log("val_R2", r2, on_step=False, on_epoch=True, sync_dist=True)
-        self.log(
-            "val_diag_loss", loss_diag, on_step=False, on_epoch=True, sync_dist=True
-        )
-        self.log("val_diag_R2", r2_diag, on_step=False, on_epoch=True, sync_dist=True)
-
         if CONFIG["roll_out"] > 1:
             x_state_rollout = x_state.clone()
             y_rollout = y.clone()
-            y_rollout_diag = y_diag.clone()
             for step in range(CONFIG["roll_out"]):
                 # x = [batch_size=8, lookback (7) + rollout (3) = 10, n_feature = 37]
                 x0 = x_state_rollout[
                     :, step, :, :
                 ].clone()  # select input with lookback.
-                y_hat, y_hat_diag = self.forward(
+                y_hat = self.forward(
                     x_clim[:, step, :, :], x_met[:, step, :, :], x0
                 )  # prediction at rollout step
-                y_rollout_diag[:, step, :, :] = y_hat_diag
                 if step < CONFIG["roll_out"] - 1:
                     x_state_rollout[:, step + 1, :, :] = (
                         x_state_rollout[:, step, :, :].clone() + y_hat
@@ -296,33 +204,26 @@ class NonLinearRegression(pl.LightningModule):
             step_loss = self.MSE_loss(
                 self.transform(y_rollout, mean, std), self.transform(y, mean, std)
             )
-            step_loss_diag = self.MSE_loss(y_rollout_diag, y_diag)
+            step_loss_abs = self.MSE_loss(x_state_rollout, x_state)
             # step_loss = step_loss / ROLLOUT
             self.log(
-                "val_step_loss", step_loss, on_step=False, on_epoch=True, sync_dist=True
+                "val_step_loss",
+                step_loss,
             )
-            self.log(
-                "val_step_loss_diag",
-                step_loss_diag,
-                on_step=False,
-                on_epoch=True,
-                sync_dist=True,
-            )
+            self.log("val_step_loss_abs", step_loss_abs)
             loss += step_loss
-            loss_diag += step_loss_diag
+            loss += step_loss_abs
+        self.log("val_loss", loss, on_step=False, on_epoch=True, sync_dist=True)
+        self.log("val_R2", r2, on_step=False, on_epoch=True, sync_dist=True)
 
-        # if ((self.current_epoch + 1) % CONFIG["logging"]["plot_freq"] == 0) & (
-        #     batch_idx == 0
-        # ):
-        #     self.log_fig_mlflow(x_state_rollout, x_state, mean, std)
+        if ((self.current_epoch + 1) % CONFIG["logging"]["plot_freq"] == 0) & (
+            batch_idx == 0
+        ):
+            self.log_fig_mlflow(x_state_rollout, x_state, mean, std)
 
     @rank_zero_only
     def log_fig_mlflow(self, logits, y, mean, std):
         fig = make_map_val_plot(
-            # (x_state + logits).cpu().numpy(),
-            # (x_state + y).cpu().numpy(),
-            # self.transform(logits, mean, std).cpu().numpy(),
-            # self.transform(y, mean, std).cpu().numpy(),
             logits.cpu().numpy(),
             y.cpu().numpy(),
             self.ds.lats,

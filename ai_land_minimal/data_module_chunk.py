@@ -84,14 +84,14 @@ class EcDataset(Dataset):
         self.x_dynamic_stdevs = tensor(self.ds_ecland.data_stdevs[self.dynamic_index])
 
         # Create time-invariant static climatological features
-        x_static = tensor(
-            self.ds_ecland.clim_data[slice(*self.x_idxs), self.clim_index]
-        )
-        clim_means = tensor(self.ds_ecland.clim_means[self.clim_index])
-        clim_stdevs = tensor(self.ds_ecland.clim_stdevs[self.clim_index])
-        self.x_static_scaled = self.transform(
-            x_static, clim_means, clim_stdevs
-        ).reshape(1, self.x_size, -1)
+        # x_static = tensor(
+        #     self.ds_ecland.clim_data[slice(*self.x_idxs), self.clim_index]
+        # )
+        self.clim_means = tensor(self.ds_ecland.clim_means[self.clim_index])
+        self.clim_stdevs = tensor(self.ds_ecland.clim_stdevs[self.clim_index])
+        # self.x_static_scaled = self.transform(
+        #     x_static, clim_means, clim_stdevs
+        # )..reshape(1, self.x_size, -1)
 
         # if "clim_glm" in self.static_feat_lst:
         #     self.static_feat_lst += ["clim_glm_binary"]
@@ -148,12 +148,16 @@ class EcDataset(Dataset):
         X = ds_slice[:, :, self.dynamic_index]
         X = self.transform(X, self.x_dynamic_means, self.x_dynamic_stdevs)
 
-        X_static = self.x_static_scaled
-        # X_static = self.transform(tensor(
-        #     self.ds_ecland.clim_data[
-        #         slice(*self.x_idxs), self.clim_index
-        #     ].reshape(1, self.x_size, -1)), self.clim_means, self.clim_stdevs
-        # )
+        # X_static = self.x_static_scaled
+        X_static = self.transform(
+            tensor(
+                self.ds_ecland.clim_data[slice(*self.x_idxs), self.clim_index].reshape(
+                    1, self.x_size, -1
+                )
+            ),
+            self.clim_means,
+            self.clim_stdevs,
+        )
 
         Y_prog = ds_slice[:, :, self.targ_index]
         Y_prog = self.transform(Y_prog, self.y_prog_means, self.y_prog_stdevs)
@@ -168,15 +172,41 @@ class EcDataset(Dataset):
 
     # get a row at an index
     def __getitem__(self, idx):
-        idx = idx + self.start_index
+        # idx = idx + self.start_index
+        t_start_idx = (idx % (self.len_dataset - 1 - self.rollout)) + self.start_index
+        t_end_idx = (
+            (idx % (self.len_dataset - 1 - self.rollout))
+            + self.start_index
+            + self.rollout
+            + 1
+        )
+        chunk_idx = idx % self.num_chunks
+
+        start_space = chunk_idx * self.chunk_size + self.x_idxs[0]
+        end_space = min((chunk_idx + 1) * self.chunk_size, self.x_size) + self.x_idxs[0]
+        idx_chunk_size = end_space - start_space
 
         ds_slice = tensor(
             self.ds_ecland.data[
-                slice(idx, idx + self.rollout + 1), slice(*self.x_idxs), :
+                slice(t_start_idx, t_end_idx), slice(start_space, end_space), :
             ]
         )
 
-        X_static = self.x_static_scaled.expand(self.rollout, -1, -1)
+        # X_static = self.x_static_scaled[slice(start_space, end_space), self.clim_index].expand(self.rollout, -1, -1)
+        X_static = self.transform(
+            tensor(
+                self.ds_ecland.clim_data[
+                    slice(start_space, end_space), self.clim_index
+                ].reshape(1, idx_chunk_size, -1)
+            ),
+            self.clim_means,
+            self.clim_stdevs,
+        ).expand(self.rollout, -1, -1)
+
+        if idx_chunk_size < self.chunk_size:
+            padding_size = self.chunk_size - idx_chunk_size
+            ds_slice = torch.nn.functional.pad(ds_slice, (0, 0, 0, padding_size))
+            X_static = torch.nn.functional.pad(X_static, (0, 0, 0, padding_size))
 
         X = ds_slice[:, :, self.dynamic_index]
         X = self.transform(X, self.x_dynamic_means, self.x_dynamic_stdevs)

@@ -5,20 +5,16 @@ import numpy as np
 import pytorch_lightning as pl
 import torch
 import yaml
-
-# from data_module import EcDataset, NonLinRegDataModule
-from data_module_idx import EcDataset, NonLinRegDataModule
+from data_module import EcDataset, NonLinRegDataModule
 
 # from data_module_cat import EcDataset, NonLinRegDataModule
-# from model import NonLinearRegression
-# from model_simple import NonLinearRegression
-from model_simple_idx import NonLinearRegression
+from model_prog import NonLinearRegression
 from pytorch_lightning.callbacks import ModelCheckpoint, RichProgressBar
 from pytorch_lightning.loggers import CSVLogger, MLFlowLogger
 from torch import tensor
 
 # from pytorch_lightning.plugins.environments import SLURMEnvironment
-from train_callbacks import PlotCallback
+from train_callbacks_prog import PlotCallback
 
 # import signal
 
@@ -108,7 +104,6 @@ if __name__ == "__main__":
     input_met_dim = len(dataset.dynamic_feat_lst)
     input_state_dim = len(dataset.targ_lst)
     output_dim = len(dataset.targ_lst)  # Number of output targets
-    output_diag_dim = len(dataset.targ_diag_lst)
     hidden_dim = CONFIG["hidden_dim"]  # Number of hidden units
     model_pyt = NonLinearRegression(
         input_clim_dim,
@@ -116,7 +111,6 @@ if __name__ == "__main__":
         input_state_dim,
         hidden_dim,
         output_dim,
-        output_diag_dim,
         mu_norm=ds_mean,
         std_norm=ds_std,
         dataset=dataset,
@@ -127,9 +121,8 @@ if __name__ == "__main__":
     logging.info("Setting Trainer...")
     trainer = pl.Trainer(
         logger=logger,
-        # callbacks=[checkpoint_callback, RichProgressBar(), plot_callback],
+        callbacks=[checkpoint_callback, RichProgressBar(), plot_callback],
         # callbacks=[checkpoint_callback, RichProgressBar()],
-        callbacks=[checkpoint_callback],
         max_epochs=CONFIG["max_epochs"],
         # plugins=[SLURMEnvironment(requeue_signal=signal.SIGUSR1)],
         strategy=CONFIG["strategy"],

@@ -1,8 +1,10 @@
 #!/bin/bash
-#SBATCH --partition=gpu
-#SBATCH --gres=gpu:1
-#SBATCH --cpus-per-task=32
-#SBATCH --mem=220Gb
+#SBATCH --qos=ng
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=4
+#SBATCH --gpus-per-node=4
+#SBATCH --cpus-per-task=12
+#SBATCH --mem=256Gb
 #SBATCH --time=48:00:00
 #SBATCH --exclude=ac6-303
 #SBATCH --output=slurm/test-pyt.%j.out

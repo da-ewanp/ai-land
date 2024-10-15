@@ -23,7 +23,7 @@ class PlotCallback(Callback):
         self.device = device
         self.plot_frequency = plot_frequency
         self.test_ds = dataset
-        self.clim, self.met, self.state, self.state_diag = self.test_ds.load_data()
+        self.clim, self.met, self.state, _ = self.test_ds.load_data()
         self.times = self.test_ds.times
         self.logger = logger
         self.x = self.test_ds.x_idxs[0]
@@ -74,21 +74,17 @@ class PlotCallback(Callback):
     def run_model(self, pl_module):
         pl_module.eval().to(self.device)
         with torch.no_grad():
-            preds, diags = pl_module.predict_step(
+            preds = pl_module.predict_step(
                 self.clim.to(self.device),
                 self.met.to(self.device),
                 self.state.to(self.device),
-                self.state_diag.to(self.device),
             )
-        return preds, diags
+        return preds
 
     @rank_zero_only
     def on_train_epoch_end(self, trainer, pl_module):
         epoch = trainer.current_epoch
         if (epoch + 1) % self.plot_frequency == 0:
-            preds, diags = self.run_model(pl_module)
+            preds = self.run_model(pl_module)
             # Generate plot using the model's current weights
             self.make_subplot(preds, self.state, self.test_ds.targ_lst, epoch, "progs")
-            self.make_subplot(
-                diags, self.state_diag, self.test_ds.targ_diag_lst, epoch, "diags"
-            )

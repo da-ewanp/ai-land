@@ -102,7 +102,7 @@ normalize:
 # file_path: "/ec/res4/hpcperm/daep/ecland_i8ki_o200_2010_2022_1hr.zarr"
 # file_path: /perm/daep/ecland_i6aj_2017_2022_1h_euro.zarr
 # file_path: "/hpcperm/daep/ecland_i6aj_2017_2022_1h_subset.zarr"
-#file_path: "/perm/daep/ecland_i6aj_2017_2022_6h_v4.zarr"  # preferred 6hr dataset!!
+#file_path: "/perm/daep/ecland_i6aj_2017_2022_6h_v4.zarr"
 file_path: "/scratch/daep/ecland_i6aj_2017_2022_1h.zarr"
 
 start_year: 2017
@@ -127,7 +127,7 @@ x_slice_indices:
   - 0
   - None
 
-roll_out: 8  # 8  # 6  # 1
+roll_out: 1  # 8  # 6  # 1
 batch_size: 1  # 2  # 2  # 4  # 8  # 32
 #roll_out: 2  # 8  # 12  # 24  # 8  # 6  # 1
 #batch_size: 5  # 5  # 12  # 2  # 2  # 4  # 8  # 32

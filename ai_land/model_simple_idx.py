@@ -219,18 +219,16 @@ class NonLinearRegression(pl.LightningModule):
             y_rollout_diag = y_diag.clone()
             for step in range(CONFIG["roll_out"]):
                 # x = [batch_size=8, lookback (7) + rollout (3) = 10, n_feature = 37]
-                x0 = x_state_rollout[
-                    :, step, :, :
-                ].clone()  # select input with lookback.
+                x0 = x_state_rollout[:, step, :].clone()  # select input with lookback.
                 y_hat, y_hat_diag = self.forward(
-                    x_clim[:, step, :, :], x_met[:, step, :, :], x0
+                    x_clim[:, step, :], x_met[:, step, :], x0
                 )  # prediction at rollout step
-                y_rollout_diag[:, step, :, :] = y_hat_diag
+                y_rollout_diag[:, step, :] = y_hat_diag
                 if step < CONFIG["roll_out"] - 1:
-                    x_state_rollout[:, step + 1, :, :] = (
-                        x_state_rollout[:, step, :, :].clone() + y_hat
+                    x_state_rollout[:, step + 1, :] = (
+                        x_state_rollout[:, step, :].clone() + y_hat
                     )  # overwrite x with prediction.
-                y_rollout[:, step, :, :] = y_hat  # overwrite y with prediction.
+                y_rollout[:, step, :] = y_hat  # overwrite y with prediction.
             step_loss = self.MSE_loss(
                 self.transform(y_rollout, mean, std), self.transform(y, mean, std)
             )
@@ -281,18 +279,16 @@ class NonLinearRegression(pl.LightningModule):
             y_rollout_diag = y_diag.clone()
             for step in range(CONFIG["roll_out"]):
                 # x = [batch_size=8, lookback (7) + rollout (3) = 10, n_feature = 37]
-                x0 = x_state_rollout[
-                    :, step, :, :
-                ].clone()  # select input with lookback.
+                x0 = x_state_rollout[:, step, :].clone()  # select input with lookback.
                 y_hat, y_hat_diag = self.forward(
-                    x_clim[:, step, :, :], x_met[:, step, :, :], x0
+                    x_clim[:, step, :], x_met[:, step, :], x0
                 )  # prediction at rollout step
-                y_rollout_diag[:, step, :, :] = y_hat_diag
+                y_rollout_diag[:, step, :] = y_hat_diag
                 if step < CONFIG["roll_out"] - 1:
-                    x_state_rollout[:, step + 1, :, :] = (
-                        x_state_rollout[:, step, :, :].clone() + y_hat
+                    x_state_rollout[:, step + 1, :] = (
+                        x_state_rollout[:, step, :].clone() + y_hat
                     )  # overwrite x with prediction.
-                y_rollout[:, step, :, :] = y_hat  # overwrite y with prediction.
+                y_rollout[:, step, :] = y_hat  # overwrite y with prediction.
             step_loss = self.MSE_loss(
                 self.transform(y_rollout, mean, std), self.transform(y, mean, std)
             )

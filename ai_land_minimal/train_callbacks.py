@@ -23,16 +23,28 @@ class GPUMemoryCallback(Callback):
         if torch.cuda.is_available():
             for i in range(trainer.num_devices):
                 # Get memory usage for the current GPU
-                memory_allocated = torch.cuda.memory_allocated(i) / (1024 * 1024)  # Convert to MB
-                memory_reserved = torch.cuda.memory_reserved(i) / (1024 * 1024)  # Convert to MB
-                memory_total = torch.cuda.get_device_properties(i).total_memory / (1024 * 1024)  # Convert to MB
-                
+                memory_allocated = torch.cuda.memory_allocated(i) / (
+                    1024 * 1024
+                )  # Convert to MB
+                memory_reserved = torch.cuda.memory_reserved(i) / (
+                    1024 * 1024
+                )  # Convert to MB
+                memory_total = torch.cuda.get_device_properties(i).total_memory / (
+                    1024 * 1024
+                )  # Convert to MB
+
                 memory_percentage = (memory_allocated / memory_total) * 100
-                
+
                 # Log metrics
-                pl_module.log(f'GPU {i} Memory Allocated mb', memory_allocated, sync_dist=True)
-                pl_module.log(f'GPU {i} Memory Reserved mb', memory_reserved, sync_dist=True)
-                pl_module.log(f'GPU {i} Memory Usage Percent', memory_percentage, sync_dist=True)
+                pl_module.log(
+                    f"GPU {i} Memory Allocated mb", memory_allocated, sync_dist=True
+                )
+                pl_module.log(
+                    f"GPU {i} Memory Reserved mb", memory_reserved, sync_dist=True
+                )
+                pl_module.log(
+                    f"GPU {i} Memory Usage Percent", memory_percentage, sync_dist=True
+                )
 
 
 class PlotCallback(Callback):

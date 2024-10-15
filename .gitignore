@@ -1,11 +1,15 @@
 # Folders
 notebooks/*
-ai_land/testing
-ai_land/slurm
-ai_land/models
-ai_land/wandb
-ai_land/logs
-ai_land/config_old.yaml
+testing/
+slurm/
+models/
+wandb/
+logs/
+mlruns/
+config_old.yaml
+*.pyt
+mlruns/
+mlruns2/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

@@ -8,6 +8,7 @@ import pytorch_lightning as pl
 import torch
 import yaml
 import zarr
+from sklearn.preprocessing import OneHotEncoder
 from torch import tensor
 from torch.utils.data import DataLoader, Dataset
 
@@ -22,6 +23,18 @@ with open(f"{PATH_NAME}/config.yaml") as stream:
 torch.cuda.empty_cache()
 
 
+def cat_encoding(cat_data, col_lst):
+    # cat_feat_dic = {"clim_sotype": 8, "clim_tvl": 23, "clim_tvh": 23}
+    cat_feat_dic = {"clim_sotype": 8, "clim_tvl": 18, "clim_tvh": 19}
+    cat_feats = []
+    for i, col in enumerate(col_lst):
+        feats = cat_data[:, i]
+        encoder = OneHotEncoder(categories=[list(range(cat_feat_dic[col]))])
+        # encoder = OneHotEncoder()
+        cat_feats.append(encoder.fit_transform(feats.reshape(-1, 1)).toarray())
+    return np.hstack(cat_feats)
+
+
 class EcDataset(Dataset):
     # load the dataset
     def __init__(
@@ -31,7 +44,6 @@ class EcDataset(Dataset):
         x_idxs=CONFIG["x_slice_indices"],
         path=CONFIG["file_path"],
         roll_out=CONFIG["roll_out"],
-        chunk_size=CONFIG["chunk_size"],
     ):
         self.ds_ecland = zarr.open(path)
         # Create time index to select appropriate data range
@@ -51,17 +63,15 @@ class EcDataset(Dataset):
         self.lats = self.ds_ecland["lat"][slice(*self.x_idxs)]
         self.lons = self.ds_ecland["lon"][slice(*self.x_idxs)]
 
-        self.chunk_size = chunk_size
-        self.num_chunks = (
-            1
-            if self.chunk_size == "None"
-            else int(np.ceil(self.x_size / self.chunk_size))
-        )
-
         # List of climatological time-invariant features
-        self.static_feat_lst = CONFIG["clim_feats"]
+        self.static_feat_lst = list(
+            set(CONFIG["clim_feats"]) - set(["clim_sotype", "clim_tvl", "clim_tvh"])
+        )
+        self.cat_feat_lst = list(
+            set(["clim_sotype", "clim_tvl", "clim_tvh"]) & set(CONFIG["clim_feats"])
+        )
         self.clim_index = [
-            list(self.ds_ecland["clim_variable"]).index(x) for x in CONFIG["clim_feats"]
+            list(self.ds_ecland["clim_variable"]).index(x) for x in self.static_feat_lst
         ]
         # List of features that change in time
         self.dynamic_feat_lst = CONFIG["dynamic_feats"]
@@ -93,13 +103,19 @@ class EcDataset(Dataset):
             x_static, clim_means, clim_stdevs
         ).reshape(1, self.x_size, -1)
 
-        # if "clim_glm" in self.static_feat_lst:
-        #     self.static_feat_lst += ["clim_glm_binary"]
-        #     glm = self.ds_ecland.clim_data.sel(clim_variable="clim_glm")
-        #     glm_arr = glm.where(glm > 0.8).values
-        #     glm_arr[np.isnan(glm_arr)] = 0
-        #     glm_arr = tensor(glm_arr.astype("int")).reshape(1, -1)
-        #     self.x_static_scaled = torch.cat((self.x_static_scaled, glm_arr), dim=-1)
+        if len(self.cat_feat_lst) > 0:
+            self.clim_cat_index = [
+                list(self.ds_ecland["clim_variable"]).index(x)
+                for x in self.cat_feat_lst
+            ]
+            cat_feats_encoded = cat_encoding(
+                self.ds_ecland.clim_data[slice(*self.x_idxs), self.clim_cat_index],
+                self.cat_feat_lst,
+            )
+            cat_feats_encoded = tensor(cat_feats_encoded).reshape(1, self.x_size, -1)
+            self.x_static_scaled = torch.cat(
+                [self.x_static_scaled, cat_feats_encoded], dim=-1
+            ).to(torch.float32)
 
         # Define statistics for normalising the targets
         self.y_prog_means = tensor(self.ds_ecland.data_means[self.targ_index])
@@ -149,11 +165,6 @@ class EcDataset(Dataset):
         X = self.transform(X, self.x_dynamic_means, self.x_dynamic_stdevs)
 
         X_static = self.x_static_scaled
-        # X_static = self.transform(tensor(
-        #     self.ds_ecland.clim_data[
-        #         slice(*self.x_idxs), self.clim_index
-        #     ].reshape(1, self.x_size, -1)), self.clim_means, self.clim_stdevs
-        # )
 
         Y_prog = ds_slice[:, :, self.targ_index]
         Y_prog = self.transform(Y_prog, self.y_prog_means, self.y_prog_stdevs)
@@ -164,22 +175,21 @@ class EcDataset(Dataset):
 
     # number of rows in the dataset
     def __len__(self):
-        return (self.len_dataset - 1 - self.rollout) * self.num_chunks
+        return self.len_dataset - 1 - self.rollout
 
     # get a row at an index
     def __getitem__(self, idx):
         idx = idx + self.start_index
-
         ds_slice = tensor(
             self.ds_ecland.data[
                 slice(idx, idx + self.rollout + 1), slice(*self.x_idxs), :
             ]
         )
 
-        X_static = self.x_static_scaled.expand(self.rollout, -1, -1)
-
         X = ds_slice[:, :, self.dynamic_index]
         X = self.transform(X, self.x_dynamic_means, self.x_dynamic_stdevs)
+
+        X_static = self.x_static_scaled.expand(self.rollout, -1, -1)
 
         Y_prog = ds_slice[:, :, self.targ_index]
         Y_prog = self.transform(Y_prog, self.y_prog_means, self.y_prog_stdevs)
@@ -200,8 +210,8 @@ class EcDataset(Dataset):
         # Y_diag = self.transform(Y_diag, self.y_diag_means, self.y_diag_stdevs)
 
         # Calculate delta_x update for corresponding x state
-        # Y_inc = Y_prog[1:, :, :] - Y_prog[:-1, :, :]
-        return X_static, X[:-1], Y_prog[:-1], Y_diag[:-1]  # Y_inc, Y_diag[:-1]
+        Y_inc = Y_prog[1:, :, :] - Y_prog[:-1, :, :]
+        return X_static, X[:-1], Y_prog[:-1], Y_inc, Y_diag[:-1]
 
 
 class NonLinRegDataModule(pl.LightningDataModule):

@@ -2,16 +2,16 @@ clim_feats:
   - clim_clake
   - clim_ldepth
   - clim_ctype
-  - clim_cell_area
+  #- clim_cell_area
   - clim_landsea
   - clim_glm
   - clim_cu
   - clim_cvh
   - clim_cvl
 ###
-  - clim_tvh
-  - clim_tvl
-  - clim_sotype
+  #- clim_tvh
+  #- clim_tvl
+  #- clim_sotype
 ###
   - clim_geopot
   - clim_sdfor
@@ -26,7 +26,7 @@ clim_feats:
   - clim_veg_rsminl
 
 dynamic_feats:
-  - met_ctpf
+  #- met_ctpf
   - met_lwdown
   - met_psurf
   - met_qair
@@ -46,8 +46,12 @@ targets_prog:
   - stl1
   - stl2
   - stl3
-  - snowc 
+  #- snowc 
+  - snowc_recalc
+  #- log10_sd
   - sd
+  - rsn
+  - tsn 
   # - tsn
 
 targets_diag:
@@ -67,14 +71,13 @@ targets_diag:
 # file_path: "/ec/res4/hpcperm/daep/ec_land_training_db/ecland_i8ki_o200_2010_2022_6h.zarr"
 # file_path: "/ec/res4/scratch/daep/ec_training_db_out_O400/ecland_i6aj_2010_2022_6h.zarr"
 # file_path: "/ec/res4/hpcperm/daep/ec_land_training_db/ecland_i6aj_o400_2010_2022_6h.zarr"
-# file_path: "/ec/scratch/daep/ecland_i6aj_chunked.zarr"
-file_path: "/perm/daep/ecland_i6aj_2017_2022_1h.zarr"
+file_path: "/ec/scratch/daep/ecland_i6aj_chunked.zarr"
 
-start_year: 2017
-end_year: 2021
+start_year: 2015
+end_year: 2020
 
-validation_start: 2022
-validation_end: 2022
+validation_start: 2021
+validation_end: 2021
 
 # x_slice_indices:
 #   - 31294
