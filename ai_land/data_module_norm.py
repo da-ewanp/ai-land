@@ -97,14 +97,6 @@ class Normalizer:
             elif var in self.normalize_dict["min-max"]:
                 means[i] = stat_dict["mins"][var_idx]
                 stdevs[i] = stat_dict["maxs"][var_idx] - stat_dict["mins"][var_idx]
-                # print(f"setting {var} normalisation=none, mean={means[i]}, stdev={stdevs[i]}")
-            # elif var in self.normalize_dict["minmax"]:
-            #     means[i] = stat_dict["mins"][var_idx]
-            #     stdevs[i] = stat_dict["maxs"][var_idx] - stat_dict["mins"][var_idx]
-            #     print(f"setting {var} normalisation=minmax, mean={means[i]}, stdev={stdevs[i]}")
-            # elif var in self.normalize_dict["stdev"]:
-            #     stdevs[i] = stat_dict["stdevs"][var_idx]
-            #     print(f"setting {var} normalisation=mean-std, mean={means[i]}, stdev={stdevs[i]}")
             else:
                 means[i] = stat_dict["means"][var_idx]
                 stdevs[i] = stat_dict["stdevs"][var_idx]
@@ -121,7 +113,6 @@ class EcDataset(Dataset):
         x_idxs=CONFIG["x_slice_indices"],
         path=CONFIG["file_path"],
         roll_out=CONFIG["roll_out"],
-        # normalize_dict=CONFIG["normalize"],
         normalizer=None,
     ):
         self.path = path

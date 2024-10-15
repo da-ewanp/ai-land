@@ -198,12 +198,7 @@ class NonLinearRegression(pl.LightningModule):
         :return: (prognost_targets, diagnostic_targets)
         """
         preds = states.clone().to(self.device)
-        # preds = torch.zeros_like(states).to(self.device)
-        # preds[0] = states[0]
         preds_diag = diagnostics.clone().to(self.device)
-        # preds = torch.zeros_like(states).to(self.device)
-        # preds_diag = torch.zeros_like(diagnostics).to(self.device)
-        # preds[0] = states[0]
         len_run = preds.shape[0]
 
         for x in range(len_run):
@@ -218,37 +213,6 @@ class NonLinearRegression(pl.LightningModule):
         # criterion = nn.MSELoss()
         criterion = nn.SmoothL1Loss()
         return criterion(logits, labels)
-
-    # def _step(self, batch, batch_idx, val: bool = False):
-    #     x_clim, x_met, x_state, y_diag = batch
-    #     mean = self.mu_norm.to(self.device)
-    #     std = self.std_norm.to(self.device)
-    #     loss = torch.zeros(1, device=self.device, requires_grad=False)
-
-    #     for rollout_step in range(CONFIG["roll_out"]):
-    #         x0 = x_state[:, rollout_step, :, :].clone()
-    #         y_hat, y_hat_diag = self.forward(
-    #             x_clim[:, rollout_step, :, :], x_met[:, rollout_step, :, :], x0
-    #         )
-    #         # y_hat -= x0
-
-    #         if rollout_step < CONFIG["roll_out"] - 1:
-    #             y = x_state[:, rollout_step + 1, :, :].clone()   # - x0
-    #             x_state[:, rollout_step + 1, :, :] = (
-    #                 # x_state[:, rollout_step, :, :].clone() + y_hat
-    #                 # x0 + y_hat
-    #                 y_hat
-    #             )  # overwrite x with prediction
-
-    #             loss += self.MSE_loss(self.transform(y_hat, mean, std), self.transform(y, mean, std))
-    #             # loss += 0.5*self.MSE_loss(y_hat_diag, y_diag[:, rollout_step, :, :])
-    #             loss += self.MSE_loss(y_hat_diag, y_diag[:, rollout_step, :, :])
-
-    #     # scale loss
-    #     loss *= 1.0 / CONFIG["roll_out"]
-    #     if val:
-    #         return loss, x_state[0, 0, :, :], y[0, :, :], y_hat[0, :, :], y_diag[0, :, :], y_hat_diag[0, :, :]
-    #     return loss
 
     def _step(self, batch, batch_idx, val: bool = False):
         x_clim, x_met, x_state, y_diag = batch
