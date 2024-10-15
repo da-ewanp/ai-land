@@ -6,7 +6,7 @@ import pytorch_lightning as pl
 import torch
 import yaml
 from pytorch_lightning.callbacks import Callback
-from pytorch_lightning.utilities import rank_zero_only
+from pytorch_lightning.utilities import memory, rank_zero_only
 
 # Define the config for the experiment
 PATH_NAME = os.path.dirname(os.path.abspath(__file__))
@@ -15,6 +15,35 @@ with open(f"{PATH_NAME}/config.yaml") as stream:
         CONFIG = yaml.safe_load(stream)
     except yaml.YAMLError as exc:
         print(exc)
+
+
+class GPUMemoryCallback(Callback):
+    def on_train_batch_end(self, trainer, pl_module, outputs, batch, batch_idx):
+        if torch.cuda.is_available():
+            for i in range(trainer.num_devices):
+                # Get memory usage for the current GPU
+                memory_allocated = torch.cuda.memory_allocated(i) / (
+                    1024 * 1024
+                )  # Convert to MB
+                memory_reserved = torch.cuda.memory_reserved(i) / (
+                    1024 * 1024
+                )  # Convert to MB
+                memory_total = torch.cuda.get_device_properties(i).total_memory / (
+                    1024 * 1024
+                )  # Convert to MB
+
+                memory_percentage = (memory_allocated / memory_total) * 100
+
+                # Log metrics
+                pl_module.log(
+                    f"GPU {i} Memory Allocated mb", memory_allocated, sync_dist=True
+                )
+                pl_module.log(
+                    f"GPU {i} Memory Reserved mb", memory_reserved, sync_dist=True
+                )
+                pl_module.log(
+                    f"GPU {i} Memory Usage Percent", memory_percentage, sync_dist=True
+                )
 
 
 class PlotCallback(Callback):

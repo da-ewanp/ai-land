@@ -7,15 +7,17 @@
 #SBATCH --mem=228GB
 #SBATCH --time=48:00:00
 #SBATCH --account=ecaifs
-#SBATCH --signal=SIGUSR1@90
 #SBATCH --output=slurm/test-ddp.%j.out
 #SBATCH --error=slurm/test-ddp.%j.out
 
 module load conda
 conda activate ml-tt
+# conda activate ai-land
 
 export NCCL_DEBUG=INFO
-export PYTHONFAULTHANDLER=1
+#export PYTHONFAULTHANDLER=1
+#export CUDA_VISIBLE_DEVICES=4
 
 # srun --label --cpu-bind=v --accel-bind=v python -u training.py
-srun python training.py
+# srun python training.py
+python training.py

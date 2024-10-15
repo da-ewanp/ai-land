@@ -31,6 +31,7 @@ class EcDataset(Dataset):
         x_idxs=CONFIG["x_slice_indices"],
         path=CONFIG["file_path"],
         roll_out=CONFIG["roll_out"],
+        chunk_size=CONFIG["chunk_size"],
     ):
         self.ds_ecland = zarr.open(path)
         # Create time index to select appropriate data range
@@ -49,6 +50,13 @@ class EcDataset(Dataset):
         self.x_size = len(self.ds_ecland["x"][slice(*self.x_idxs)])
         self.lats = self.ds_ecland["lat"][slice(*self.x_idxs)]
         self.lons = self.ds_ecland["lon"][slice(*self.x_idxs)]
+
+        self.chunk_size = chunk_size
+        self.num_chunks = (
+            1
+            if self.chunk_size == "None"
+            else int(np.ceil(self.x_size / self.chunk_size))
+        )
 
         # List of climatological time-invariant features
         self.static_feat_lst = CONFIG["clim_feats"]
@@ -84,6 +92,7 @@ class EcDataset(Dataset):
         self.x_static_scaled = self.transform(
             x_static, clim_means, clim_stdevs
         ).reshape(1, self.x_size, -1)
+
         # if "clim_glm" in self.static_feat_lst:
         #     self.static_feat_lst += ["clim_glm_binary"]
         #     glm = self.ds_ecland.clim_data.sel(clim_variable="clim_glm")
@@ -140,6 +149,11 @@ class EcDataset(Dataset):
         X = self.transform(X, self.x_dynamic_means, self.x_dynamic_stdevs)
 
         X_static = self.x_static_scaled
+        # X_static = self.transform(tensor(
+        #     self.ds_ecland.clim_data[
+        #         slice(*self.x_idxs), self.clim_index
+        #     ].reshape(1, self.x_size, -1)), self.clim_means, self.clim_stdevs
+        # )
 
         Y_prog = ds_slice[:, :, self.targ_index]
         Y_prog = self.transform(Y_prog, self.y_prog_means, self.y_prog_stdevs)
@@ -150,21 +164,22 @@ class EcDataset(Dataset):
 
     # number of rows in the dataset
     def __len__(self):
-        return self.len_dataset - 1 - self.rollout
+        return (self.len_dataset - 1 - self.rollout) * self.num_chunks
 
     # get a row at an index
     def __getitem__(self, idx):
         idx = idx + self.start_index
+
         ds_slice = tensor(
             self.ds_ecland.data[
                 slice(idx, idx + self.rollout + 1), slice(*self.x_idxs), :
             ]
         )
 
+        X_static = self.x_static_scaled.expand(self.rollout, -1, -1)
+
         X = ds_slice[:, :, self.dynamic_index]
         X = self.transform(X, self.x_dynamic_means, self.x_dynamic_stdevs)
-
-        X_static = self.x_static_scaled.expand(self.rollout, -1, -1)
 
         Y_prog = ds_slice[:, :, self.targ_index]
         Y_prog = self.transform(Y_prog, self.y_prog_means, self.y_prog_stdevs)
@@ -172,9 +187,21 @@ class EcDataset(Dataset):
         Y_diag = ds_slice[:, :, self.targ_diag_index]
         Y_diag = self.transform(Y_diag, self.y_diag_means, self.y_diag_stdevs)
 
+        # Is it faster to slice data by time idx first and then select columns or is the below more optimal?
+        # X = tensor(self.ds_ecland.data[slice(idx, idx + self.rollout + 1), slice(*self.x_idxs), self.dynamic_index])
+        # X = self.transform(X, self.x_dynamic_means, self.x_dynamic_stdevs)
+
+        # X_static = self.x_static_scaled.expand(self.rollout, -1, -1)
+
+        # Y_prog = tensor(self.ds_ecland.data[slice(idx, idx + self.rollout + 1), slice(*self.x_idxs), self.targ_index])
+        # Y_prog = self.transform(Y_prog, self.y_prog_means, self.y_prog_stdevs)
+
+        # Y_diag = tensor(self.ds_ecland.data[slice(idx, idx + self.rollout + 1), slice(*self.x_idxs), self.targ_diag_index])
+        # Y_diag = self.transform(Y_diag, self.y_diag_means, self.y_diag_stdevs)
+
         # Calculate delta_x update for corresponding x state
-        Y_inc = Y_prog[1:, :, :] - Y_prog[:-1, :, :]
-        return X_static, X[:-1], Y_prog[:-1], Y_inc, Y_diag[:-1]
+        # Y_inc = Y_prog[1:, :, :] - Y_prog[:-1, :, :]
+        return X_static, X[:-1], Y_prog[:-1], Y_diag[:-1]  # Y_inc, Y_diag[:-1]
 
 
 class NonLinRegDataModule(pl.LightningDataModule):
@@ -193,8 +220,8 @@ class NonLinRegDataModule(pl.LightningDataModule):
             batch_size=CONFIG["batch_size"],
             shuffle=True,
             num_workers=CONFIG["num_workers"],
-            # persistent_workers=True,
-            # pin_memory=True,
+            persistent_workers=True,
+            pin_memory=True,
         )
 
     def val_dataloader(self):
@@ -203,6 +230,6 @@ class NonLinRegDataModule(pl.LightningDataModule):
             batch_size=CONFIG["batch_size"],
             shuffle=False,
             num_workers=CONFIG["num_workers"],
-            # persistent_workers=True,
-            # pin_memory=True,
+            persistent_workers=True,
+            pin_memory=True,
         )
